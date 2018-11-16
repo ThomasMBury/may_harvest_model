@@ -116,11 +116,11 @@ appended_ews = []
 # loop through each trajectory as an input to ews_compute
 for i in range(numSims):
     df_temp = ews_compute(df_sims['Sim '+str(i+1)], 
-                      roll_window=0.5, 
+                      roll_window=0.25, 
                       band_width=0.1,
                       lag_times=[1], 
                       ews=['var','ac','smax','aic'],
-                      ham_length=40,                     
+                      ham_length=10,                     
                       upto=tbif)
     # include a column in the dataframe for realisation number
     df_temp['Realisation number'] = pd.Series((i+1)*np.ones([len(t)],dtype=int),index=t)
@@ -171,15 +171,17 @@ df_ktau = pd.DataFrame(columns=df_ews.columns, index=np.arange(numSims)+1,dtype=
 for j in range(numSims):
     # compute kenall tau for each EWS
     ktau = pd.Series([df_ews.loc[j+1,x].corr(time_series,method='kendall') for x in df_ews.columns],index=df_ews.columns)
-    # add to dataframe
+    # addå to dataframe
     df_ktau.loc[j+1]= ktau
 
 # kendall tau distribution statistics can be found using
-df_ktau.describe()
+ktau_stats=df_ktau.describe()
 
 df_ktau[['Variance','Lag-1 AC','Smax']].plot(kind='box',ylim=(0,1))
 
 
+# Export kendall tau values for plotting in MMA
+df_ktau[['Variance','Lag-1 AC','Smax']].to_csv('data_export/ktau_add1')
 
 
 
