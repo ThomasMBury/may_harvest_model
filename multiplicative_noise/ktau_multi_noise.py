@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.append('../../early_warnings')
 from ews_compute import ews_compute
+from ews_spec import pspec_welch, pspec_metrics
 
 
 
@@ -227,6 +228,45 @@ df_ktau[['Variance','Lag-1 AC','Smax']].plot(kind='box',ylim=(-1,1))
 
 ## Export kendall tau values for plotting in MMA
 #df_ktau[['Variance','Lag-1 AC','Smax']].to_csv('data_export/ktau_add_tlong.csv')
+
+
+
+
+#-------------------------------------
+# Display power spectrum and fits at a given instant in time
+#------------------------------------
+
+t_pspec = 800
+
+# Use function pspec_welch to compute the power spectrum of the residuals at a particular time
+pspec=pspec_welch(df_ews.loc[5][t_pspec-0.25*max(df_sims_filt.index):t_pspec]['Residuals'], dt2, ham_length=40, w_cutoff=1)
+
+# Execute the function pspec_metrics to compute the AIC weights and fitting parameters
+spec_ews = pspec_metrics(pspec, ews=['smax', 'cf', 'aic', 'aic_params'])
+# Define the power spectrum models
+def fit_fold(w,sigma,lam):
+    return (sigma**2 / (2*np.pi))*(1/(w**2+lam**2))
+        
+def fit_hopf(w,sigma,mu,w0):
+    return (sigma**2/(4*np.pi))*(1/((w+w0)**2+mu**2)+1/((w-w0)**2 +mu**2))
+        
+def fit_null(w,sigma):
+    return sigma**2/(2*np.pi)* w**0
+
+
+# Make plot
+w_vals = np.linspace(-max(pspec.index),max(pspec.index),100)
+
+fig2=plt.figure(2)
+pspec.plot(label='Measured')
+plt.plot(w_vals, fit_fold(w_vals, spec_ews['Params fold']['sigma'], spec_ews['Params fold']['lam']),label='Fold fit')
+plt.plot(w_vals, fit_hopf(w_vals, spec_ews['Params hopf']['sigma'], spec_ews['Params hopf']['mu'], spec_ews['Params hopf']['w0']),label='Hopf fit')
+plt.plot(w_vals, fit_null(w_vals, spec_ews['Params null']['sigma']),label='Null fit')
+plt.ylabel('Power')
+plt.legend()
+plt.title('Power spectrum and fits at time t='+str(t_pspec))
+
+
 
 
 
