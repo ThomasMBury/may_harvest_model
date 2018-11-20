@@ -33,11 +33,11 @@ dt = 0.1
 t0 = 0
 tmax = 1000
 burn_time = 100 # burn-in period
-numSims = 10
+numSims = 5
 seed = 0 # random number generation seed
 
 # parameters to add noise to
-noisy_params = ['k']
+noisy_params = ['add']
 
 
 # Model: dx/dt = de_fun(x,t) + sigma dW(t)
@@ -56,10 +56,10 @@ x0 = 0.8197 # intial condition (equilibrium value computed in Mathematica)
 
 # noise amplitudes
 r_amp = 0.1
-k_amp = 0.1
+k_amp = 0.05
 s_amp = 0.1
-state_add_amp = 0.2 # additive noise to state
-state_multi_amp = 0.2 # multiplicative noise proportional to size of state
+state_add_amp = 0.02 # additive noise to state
+state_multi_amp = 0.02 # multiplicative noise proportional to size of state
 
 
 
@@ -109,14 +109,14 @@ else:
 # create additive / multiplicative noise components    
 if 'add' in noisy_params:
     add_burn_comps = np.random.normal(loc=0, scale=np.sqrt(dt)*state_add_amp, size=[numSims,tburn.size])
-    add_comps = np.random.normal(loc=0, scale=np.sart(dt)*state_add_amp, size=[numSims,t.size])
+    add_comps = np.random.normal(loc=0, scale=np.sqrt(dt)*state_add_amp, size=[numSims,t.size])
 else:
     add_burn_comps = np.zeros([numSims,tburn.size])
     add_comps = np.zeros([numSims,t.size])  
     
 if 'multi' in noisy_params:
     multi_burn_comps = np.random.normal(loc=0, scale=np.sqrt(dt)*state_multi_amp, size=[numSims,tburn.size])
-    multi_comps = np.random.normal(loc=0, scale=np.sart(dt)*state_multi_amp, size=[numSims,t.size])
+    multi_comps = np.random.normal(loc=0, scale=np.sqrt(dt)*state_multi_amp, size=[numSims,t.size])
 else:
     multi_burn_comps = np.zeros([numSims,tburn.size])
     multi_comps = np.zeros([numSims,t.size])   
@@ -129,14 +129,14 @@ for j in range(numSims):
     
     # Run burn-in period on x0
     for i in range(len(tburn)-1):
-        x0 = x0 + de_fun(x0, r[j,i], k[j,i], h[0], s[j,i])*dt + state_add_amp*add_comps[j,i] + state_multi_amp*multi_comps[j,i]*x0
+        x0 = x0 + de_fun(x0, r[j,i], k[j,i], h[0], s[j,i])*dt + add_comps[j,i] + multi_comps[j,i]*x0
         
     # Initial condition post burn-in period
     x[0]=x0
     
     # Run simulation
     for i in range(len(t)-1):
-        x[i+1] = x[i] + de_fun(x[i], r[j,i], k[j,i] ,h.iloc[i], s[j,i])*dt +  state_add_amp*add_comps[j,i] + state_multi_amp*multi_comps[j,i]*x[i]
+        x[i+1] = x[i] + de_fun(x[i], r[j,i], k[j,i] ,h.iloc[i], s[j,i])*dt +  add_comps[j,i] + multi_comps[j,i]*x[i]
         # make sure that state variable remains >= 0 
         if x[i+1] < 0:
             x[i+1] = 0
@@ -166,12 +166,12 @@ appended_ews = []
 # loop through each trajectory as an input to ews_compute
 for i in range(numSims):
     df_temp = ews_compute(df_sims_filt['Sim '+str(i+1)], 
-                      roll_window=0.5, 
+                      roll_window=0.25, 
                       band_width=0.1,
                       lag_times=[1], 
                       ews=['var','ac','sd','cv','skew','kurt','smax','aic'],
-                      ham_length=20,                     
-                      upto=tbif)
+                      ham_length=40,                     
+                      upto=tbif*0.95)
     # include a column in the dataframe for realisation number
     df_temp['Realisation number'] = pd.Series((i+1)*np.ones([len(t)],dtype=int),index=t)
     
@@ -191,6 +191,9 @@ df_ews = pd.concat(appended_ews).set_index('Realisation number',append=True).reo
 #------------------------
 # Plots of EWS
 #-----------------------
+
+# plot of trajectories
+df_sims.plot()
 
 # plot of all variance trajectories
 df_ews.loc[:,'Variance'].unstack(level=0).plot(legend=False, title='Variance') # unstack puts index back as a column
@@ -239,7 +242,11 @@ df_ktau[['Variance','Lag-1 AC','Smax']].plot(kind='box',ylim=(-1,1))
 t_pspec = 800
 
 # Use function pspec_welch to compute the power spectrum of the residuals at a particular time
-pspec=pspec_welch(df_ews.loc[5][t_pspec-0.25*max(df_sims_filt.index):t_pspec]['Residuals'], dt2, ham_length=40, w_cutoff=1)
+pspec=pspec_welch(df_ews.loc[1][t_pspec-0.25*max(df_sims_filt.index):t_pspec]['Residuals'], 
+                  dt2, 
+                  ham_length=40, 
+                  w_cutoff=1,
+                  scaling='density')
 
 # Execute the function pspec_metrics to compute the AIC weights and fitting parameters
 spec_ews = pspec_metrics(pspec, ews=['smax', 'cf', 'aic', 'aic_params'])
@@ -257,7 +264,7 @@ def fit_null(w,sigma):
 # Make plot
 w_vals = np.linspace(-max(pspec.index),max(pspec.index),100)
 
-fig2=plt.figure(2)
+fig2=plt.figure(6)
 pspec.plot(label='Measured')
 plt.plot(w_vals, fit_fold(w_vals, spec_ews['Params fold']['sigma'], spec_ews['Params fold']['lam']),label='Fold fit')
 plt.plot(w_vals, fit_hopf(w_vals, spec_ews['Params hopf']['sigma'], spec_ews['Params hopf']['mu'], spec_ews['Params hopf']['w0']),label='Hopf fit')
