@@ -28,9 +28,9 @@ from ews_compute import ews_compute
 
 
 # Simulation parameters
-dt = 1
+dt = 0.1
 t0 = 0
-tmax = 1000
+tmax = 400
 tburn = 100 # burn-in period
 numSims = 100
 seed = 0 # random number generation seed
@@ -109,13 +109,16 @@ for j in range(numSims):
 ## Execute ews_compute for each realisation
 #---------------------
 
+# Sample from time-series at uniform intervals of width dt2
+dt2 = 1
+df_sims_filt = df_sims[np.remainder(df_sims.index,dt2) == 0]
 
 # set up a list to store output dataframes from ews_compute- we will concatenate them at the end
 appended_ews = []
 
 # loop through each trajectory as an input to ews_compute
 for i in range(numSims):
-    df_temp = ews_compute(df_sims['Sim '+str(i+1)], 
+    df_temp = ews_compute(df_sims_filt['Sim '+str(i+1)], 
                       roll_window=0.5, 
                       band_width=0.1,
                       lag_times=[1], 
@@ -162,7 +165,7 @@ df_ews.loc[:,'AIC fold'].unstack(level=0).dropna().plot(legend=False, title='AIC
 #----------------------------
 
 # make the time values their own series and use pd.corr to compute kendall tau correlation
-time_series = pd.Series(df_sims.index, index=df_sims.index)
+time_series = pd.Series(df_sims_filt.index, index=df_sims_filt.index)
 
 # Find kendall tau correlation coefficient for each EWS over each realisation.
 # initialise dataframe
@@ -180,8 +183,8 @@ ktau_stats=df_ktau.describe()
 df_ktau[['Variance','Lag-1 AC','Smax']].plot(kind='box',ylim=(0,1))
 
 
-# Export kendall tau values for plotting in MMA
-df_ktau[['Variance','Lag-1 AC','Smax']].to_csv('data_export/ktau_add1')
+## Export kendall tau values for plotting in MMA
+#df_ktau[['Variance','Lag-1 AC','Smax']].to_csv('data_export/ktau_add_tshort.csv')
 
 
 
