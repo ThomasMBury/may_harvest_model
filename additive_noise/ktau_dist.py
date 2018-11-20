@@ -32,7 +32,7 @@ dt = 1
 t0 = 0
 tmax = 1000
 tburn = 100 # burn-in period
-numSims = 20
+numSims = 100
 seed = 0 # random number generation seed
 
 # Model: dx/dt = de_fun(x,t) + sigma dW(t)
@@ -89,7 +89,7 @@ for j in range(numSims):
     
     # Run simulation
     for i in range(len(t)-1):
-        x[i+1] = x[i] + de_fun(x[i],r,k,h[i],s)*dt + sigma*dW[i]
+        x[i+1] = x[i] + de_fun(x[i],r,k,h.iloc[i],s)*dt + sigma*dW[i]
         # make sure that state variable remains >= 0 
         if x[i+1] < 0:
             x[i+1] = 0
@@ -116,11 +116,11 @@ appended_ews = []
 # loop through each trajectory as an input to ews_compute
 for i in range(numSims):
     df_temp = ews_compute(df_sims['Sim '+str(i+1)], 
-                      roll_window=0.25, 
+                      roll_window=0.5, 
                       band_width=0.1,
                       lag_times=[1], 
-                      ews=['var','ac','smax','aic'],
-                      ham_length=10,                     
+                      ews=['var','ac','sd','cv','skew','kurt','smax','aic'],
+                      ham_length=40,                     
                       upto=tbif)
     # include a column in the dataframe for realisation number
     df_temp['Realisation number'] = pd.Series((i+1)*np.ones([len(t)],dtype=int),index=t)
