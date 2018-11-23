@@ -30,7 +30,7 @@ from ews_compute import ews_compute
 # Simulation parameters
 dt = 0.1
 t0 = 0
-tmax = 400
+tmax = 1000
 tburn = 100 # burn-in period
 numSims = 100
 seed = 0 # random number generation seed
@@ -154,10 +154,6 @@ df_ews.loc[:,'Lag-1 AC'].unstack(level=0).plot(legend=False, title='Lag-1 AC')
 # plot of all smax trajectories
 df_ews.loc[:,'Smax'].unstack(level=0).dropna().plot(legend=False, title='Smax') # drop Nan values
 
-# plot of all Fold AIC trajectories
-df_ews.loc[:,'AIC fold'].unstack(level=0).dropna().plot(legend=False, title='AIC fold') # drop Nan values
-
-
 
 
 #---------------------------
@@ -184,7 +180,7 @@ df_ktau[['Variance','Lag-1 AC','Smax']].plot(kind='box',ylim=(0,1))
 
 
 ## Export kendall tau values for plotting in MMA
-#df_ktau[['Variance','Lag-1 AC','Smax']].to_csv('data_export/ktau_add_tshort.csv')
+#df_ktau[['Variance','Lag-1 AC','Smax']].to_csv('data_export/ktau_add_tlong.csv')
 
 
 

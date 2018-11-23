@@ -33,11 +33,11 @@ dt = 0.1
 t0 = 0
 tmax = 1000
 burn_time = 100 # burn-in period
-numSims = 5
+numSims = 100
 seed = 0 # random number generation seed
 
 # parameters to add noise to
-noisy_params = ['add']
+noisy_params = ['k']
 
 
 # Model: dx/dt = de_fun(x,t) + sigma dW(t)
@@ -56,9 +56,9 @@ x0 = 0.8197 # intial condition (equilibrium value computed in Mathematica)
 
 # noise amplitudes
 r_amp = 0.1
-k_amp = 0.05
+k_amp = 0.1
 s_amp = 0.1
-state_add_amp = 0.02 # additive noise to state
+state_add_amp = 0.01 # additive noise to state
 state_multi_amp = 0.02 # multiplicative noise proportional to size of state
 
 
@@ -166,12 +166,12 @@ appended_ews = []
 # loop through each trajectory as an input to ews_compute
 for i in range(numSims):
     df_temp = ews_compute(df_sims_filt['Sim '+str(i+1)], 
-                      roll_window=0.25, 
+                      roll_window=0.5, 
                       band_width=0.1,
                       lag_times=[1], 
                       ews=['var','ac','sd','cv','skew','kurt','smax','aic'],
-                      ham_length=40,                     
-                      upto=tbif*0.95)
+                      ham_length=80,                     
+                      upto=tbif*0.98)
     # include a column in the dataframe for realisation number
     df_temp['Realisation number'] = pd.Series((i+1)*np.ones([len(t)],dtype=int),index=t)
     
@@ -192,8 +192,8 @@ df_ews = pd.concat(appended_ews).set_index('Realisation number',append=True).reo
 # Plots of EWS
 #-----------------------
 
-# plot of trajectories
-df_sims.plot()
+# plot of trajectory and smoothing
+df_ews.loc[1][['State variable','Smoothing']].plot()
 
 # plot of all variance trajectories
 df_ews.loc[:,'Variance'].unstack(level=0).plot(legend=False, title='Variance') # unstack puts index back as a column
@@ -204,7 +204,8 @@ df_ews.loc[:,'Lag-1 AC'].unstack(level=0).plot(legend=False, title='Lag-1 AC')
 # plot of all smax trajectories
 df_ews.loc[:,'Smax'].unstack(level=0).dropna().plot(legend=False, title='Smax') # drop Nan values
 
-
+# plot of all AIC trajectories
+df_ews.loc[:,'AIC fold'].unstack(level=0).dropna().plot(legend=False, title='Smax') # drop Nan values
 
 #---------------------------
 ## Compute distribution of kendall tau values and make box-whisker plots
@@ -229,8 +230,8 @@ ktau_stats=df_ktau.describe()
 df_ktau[['Variance','Lag-1 AC','Smax']].plot(kind='box',ylim=(-1,1))
 
 
-## Export kendall tau values for plotting in MMA
-#df_ktau[['Variance','Lag-1 AC','Smax']].to_csv('data_export/ktau_add_tlong.csv')
+# Export kendall tau values for plotting in MMA
+df_ktau[['Variance','Lag-1 AC','Coefficient of variation','Skewness','Kurtosis','Smax']].to_csv('data_export/ktau_multi_k.csv')
 
 
 
@@ -239,14 +240,14 @@ df_ktau[['Variance','Lag-1 AC','Smax']].plot(kind='box',ylim=(-1,1))
 # Display power spectrum and fits at a given instant in time
 #------------------------------------
 
-t_pspec = 800
+t_pspec = tmax*(2/10)
 
 # Use function pspec_welch to compute the power spectrum of the residuals at a particular time
 pspec=pspec_welch(df_ews.loc[1][t_pspec-0.25*max(df_sims_filt.index):t_pspec]['Residuals'], 
                   dt2, 
-                  ham_length=40, 
+                  ham_length=80, 
                   w_cutoff=1,
-                  scaling='density')
+                  scaling='spectrum')
 
 # Execute the function pspec_metrics to compute the AIC weights and fitting parameters
 spec_ews = pspec_metrics(pspec, ews=['smax', 'cf', 'aic', 'aic_params'])
