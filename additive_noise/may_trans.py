@@ -44,12 +44,12 @@ t0 = 0
 tmax = 800
 tburn = 100 # burn-in period
 numSims = 5
-seed = 1 # random number generation seed
+seed = 60 # random number generation seed
 sigma = 0.02 # noise intensity
 
 # EWS parameters
 dt2 = 1 # spacing between time-series for EWS computation
-rw = 0.5 # rolling window
+rw = 0.25 # rolling window
 bw = 0.05 # bandwidth
 lags = [1,2,4] # autocorrelation lag times
 ews = ['var','ac','sd','cv','skew','kurt','smax','aic','cf'] # EWS to compute
@@ -200,7 +200,7 @@ df_ews_deviations = df_ews[ews_names].std(level='Time')
 #-------------------------
 
 # Realisation number to plot
-plot_num = 1
+plot_num = 3
 var = 'x'
 ## Plot of trajectory, smoothing and EWS of var (x or y)
 fig1, axes = plt.subplots(nrows=4, ncols=1, sharex=True, figsize=(6,6))
@@ -243,7 +243,7 @@ def plot_pspec_grid(tVals, plot_num, var):
 #  Choose time values at which to display power spectrum
 t_display = df_pspec.index.levels[2][::1].values
 
-plot_pspec = plot_pspec_grid(t_display,1,'x')
+plot_pspec = plot_pspec_grid(t_display, plot_num, 'x')
 
 
 #------------------------------------
