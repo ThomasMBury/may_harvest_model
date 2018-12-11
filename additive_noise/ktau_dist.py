@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 # import EWS function
 import sys
 sys.path.append('../../early_warnings')
-from ews_compute import ews_compute
+import ews_compute
 
 
 
