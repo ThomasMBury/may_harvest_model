@@ -29,11 +29,11 @@ from ews_spec import pspec_welch, pspec_metrics
 
 
 # Simulation parameters
-dt = 0.1
+dt = 0.01
 t0 = 0
 tmax = 1000
-burn_time = 100 # burn-in period
-numSims = 100
+burn_time = 200 # burn-in period
+numSims = 5
 seed = 0 # random number generation seed
 
 # parameters to add noise to
@@ -77,7 +77,7 @@ h = pd.Series(np.linspace(hl,hh,len(t)),index=t)
 # Time at which bifurcation occurs
 tbif = h[h > hbif].index[1]
 
-## Implement Euler Maryuyama for stocahstic simulation
+## Implement Euler Maruyama for stocahstic simulation
 
 
 # Set seed
@@ -129,7 +129,7 @@ for j in range(numSims):
     
     # Run burn-in period on x0
     for i in range(len(tburn)-1):
-        x0 = x0 + de_fun(x0, r[j,i], k[j,i], h[0], s[j,i])*dt + add_comps[j,i] + multi_comps[j,i]*x0
+        x0 = x0 + de_fun(x0, r_burn[j,i], k_burn[j,i], h[0], s_burn[j,i])*dt + add_burn_comps[j,i] + multi_burn_comps[j,i]*x0
         
     # Initial condition post burn-in period
     x[0]=x0
