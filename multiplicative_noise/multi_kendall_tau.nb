@@ -3,10 +3,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[         0,          0]
-NotebookDataLength[    286253,       6868]
+NotebookDataLength[    286250,       6868]
 NotebookOptionsPosition[    270831,       6492]
-NotebookOutlinePosition[    271659,       6520]
-CellTagsIndexPosition[    271521,       6514]
+NotebookOutlinePosition[    271656,       6520]
+CellTagsIndexPosition[    271518,       6514]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -6491,7 +6491,7 @@ b6a1d023cbff"]
 }, Open  ]]
 },
 WindowSize->{1142, 704},
-WindowMargins->{{Automatic, -1423}, {Automatic, 123}},
+WindowMargins->{{Automatic, 0}, {-117, Automatic}},
 FrontEndVersion->"11.1 for Mac OS X x86 (32-bit, 64-bit Kernel) (April 27, \
 2017)",
 StyleDefinitions->"Default.nb"
@@ -6513,8 +6513,8 @@ CellTagsIndex->{
 *)
 (*CellTagsIndex
 CellTagsIndex->{
- {"Info60003749905348-1953300", 271159, 6503},
- {"Info60133749905707-1953300", 271345, 6507}
+ {"Info60003749905348-1953300", 271156, 6503},
+ {"Info60133749905707-1953300", 271342, 6507}
  }
 *)
 (*NotebookFileOutline
