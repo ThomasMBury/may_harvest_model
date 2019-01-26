@@ -42,24 +42,24 @@ def apply_inplace(df, field, fun):
 
 
 # Simulation parameters
-dt = 0.1
+dt = 0.05
 t0 = 0
-tmax = 1000 # make large (to get idealised statistics from stationary distribution)
+tmax = 500 # make large (to get idealised statistics from stationary distribution)
 tburn = 200 # burn-in period
-seed = 1 # random number generation seed
+seed = 2 # random number generation seed
 hbif = 0.260437 # Fold bifurcation (computed in XPPAUT)
-hl = 0.05 # low delta value
+hl = 0.15 # low delta value
 hh = 0.25 # high delta value
 hinc = 0.005 # increment in h value
 numSims = 1 # One simulation for each h value
 
 
 # noise amplitudes
-r_amp = 0.05
-k_amp = 0.02
-s_amp = 0.05
-state_add_amp = 0.002 # additive noise to state
-state_multi_amp = 0.005 # multiplicative noise proportional to size of state
+r_amp = 0.2
+k_amp = 0.08
+s_amp = 0.2
+state_add_amp = 0.008 # additive noise to state
+state_multi_amp = 0.02 # multiplicative noise proportional to size of state
 
 
 
@@ -284,13 +284,14 @@ df_ews = df_ews_full.dropna().reset_index(level=2, drop=True)
 #–--------------------------
 
 
-df_ews['Smax'].unstack(level=0).plot()
 
-df_ews['Variance'].unstack(level=0).plot()
+df_ews['Smax'].unstack(level=0).plot(title = 'Smax')
 
-df_ews['Coefficient of variation'].unstack(level=0).plot()
+df_ews['Variance'].unstack(level=0).plot(title = 'Variance')
 
-df_ews['Lag-1 AC'].unstack(level=0).plot()
+df_ews['Coefficient of variation'].unstack(level=0).plot(title = 'CV')
+
+df_ews['Lag-1 AC'].unstack(level=0).plot(title = 'Lag-1 AC')
 
 
 
