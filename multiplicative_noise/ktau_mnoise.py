@@ -29,15 +29,15 @@ from ews_spec import pspec_welch, pspec_metrics
 
 
 # Simulation parameters
-dt = 0.01
+dt = 0.1
 t0 = 0
 tmax = 1000
-burn_time = 200 # burn-in period
-numSims = 5
+burn_time = 100 # burn-in period
+numSims = 100
 seed = 0 # random number generation seed
 
 # parameters to add noise to
-noisy_params = ['k']
+noisy_params = ['multi']
 
 
 # Model: dx/dt = de_fun(x,t) + sigma dW(t)
@@ -49,15 +49,15 @@ def de_fun(x,r,k,h,s):
 r = 1 # growth rate
 k = 1 # carrying capacity
 s = 0.1 # half-saturation constant of harvesting function
-hl = 0.15 # initial harvesting rate
+hl = 0.1 # initial harvesting rate
 hh = 0.28 # final harvesting rate
 hbif = 0.260437 # bifurcation point (computed in Mathematica)
 x0 = 0.8197 # intial condition (equilibrium value computed in Mathematica)
 
 # noise amplitudes
-r_amp = 0.1
-k_amp = 0.1
-s_amp = 0.1
+r_amp = 0.2
+k_amp = 0.2
+s_amp = 0.5
 state_add_amp = 0.01 # additive noise to state
 state_multi_amp = 0.02 # multiplicative noise proportional to size of state
 
@@ -122,7 +122,8 @@ else:
     multi_comps = np.zeros([numSims,t.size])   
     
     
-
+# print update
+    print('   Begin simulations \n')
 # loop over simulations
 for j in range(numSims):
     
@@ -130,7 +131,8 @@ for j in range(numSims):
     # Run burn-in period on x0
     for i in range(len(tburn)-1):
         x0 = x0 + de_fun(x0, r_burn[j,i], k_burn[j,i], h[0], s_burn[j,i])*dt + add_burn_comps[j,i] + multi_burn_comps[j,i]*x0
-        
+        # make sure remains >=0
+        x0 = np.max([x0,0])
     # Initial condition post burn-in period
     x[0]=x0
     
@@ -138,16 +140,18 @@ for j in range(numSims):
     for i in range(len(t)-1):
         x[i+1] = x[i] + de_fun(x[i], r[j,i], k[j,i] ,h.iloc[i], s[j,i])*dt +  add_comps[j,i] + multi_comps[j,i]*x[i]
         # make sure that state variable remains >= 0 
-        if x[i+1] < 0:
-            x[i+1] = 0
+        x[i+1] = np.max([x[i+1], 0])
             
     # Store data as a Series indexed by time
     series = pd.Series(x, index=t)
     # add Series to DataFrame of realisations
     df_sims['Sim '+str(j+1)] = series
+    
+    # Print update
+    print('Simulation %d complete' % (j+1))
 
 
-
+    
 
 
 
@@ -162,29 +166,51 @@ df_sims_filt = df_sims[np.remainder(df_sims.index,dt2) == 0]
 
 # set up a list to store output dataframes from ews_compute- we will concatenate them at the end
 appended_ews = []
+appended_ktau = []
+
+# Print update
+print('\n   Begin EWS computation \n')
 
 # loop through each trajectory as an input to ews_compute
 for i in range(numSims):
-    df_temp = ews_compute(df_sims_filt['Sim '+str(i+1)], 
+    dict_ews = ews_compute(df_sims_filt['Sim '+str(i+1)], 
                       roll_window=0.5, 
-                      band_width=0.1,
+                      band_width=0.05,
                       lag_times=[1], 
-                      ews=['var','ac','sd','cv','skew','kurt','smax','aic'],
-                      ham_length=80,                     
-                      upto=tbif*0.98)
-    # include a column in the dataframe for realisation number
-    df_temp['Realisation number'] = pd.Series((i+1)*np.ones([len(t)],dtype=int),index=t)
+                      ews=['var','ac','sd','cv','skew','kurt','smax'],
+                      ham_length=40,                     
+                      upto=tbif*1,
+                      pspec_roll_offset = 20)
     
-    # add DataFrame to list
-    appended_ews.append(df_temp)
+    # EWS dataframe
+    df_ews_temp = dict_ews['EWS metrics']
+    # Include a column in the dataframe for realisation number
+    df_ews_temp['Realisation number'] = i+1
     
-    # print status every 10 realisations
+#    # Power spectra dataframe
+#    df_pspec_temp = dict_ews['Power spectrum']
+#    df_pspec_temp['Realisation number'] = i+1
+    
+    # Kendall tau values
+    df_ktau_temp = dict_ews['Kendall tau']
+    df_ktau_temp['Realisation number'] = i+1
+    
+    # add DataFrames to list
+    appended_ews.append(df_ews_temp)
+    appended_ktau.append(df_ktau_temp)
+    
+    
+    
+    # print status
     if np.remainder(i+1,1)==0:
-        print('Realisation '+str(i+1)+' complete')
+        print('EWS for simulation '+str(i+1)+' complete')
 
 
 # concatenate EWS DataFrames - use realisation number and time as indices
 df_ews = pd.concat(appended_ews).set_index('Realisation number',append=True).reorder_levels([1,0])
+
+# Concatenate kendall tau dataframes
+df_ktau = pd.concat(appended_ktau).set_index('Realisation number')
 
 
 
@@ -204,77 +230,21 @@ df_ews.loc[:,'Lag-1 AC'].unstack(level=0).plot(legend=False, title='Lag-1 AC')
 # plot of all smax trajectories
 df_ews.loc[:,'Smax'].unstack(level=0).dropna().plot(legend=False, title='Smax') # drop Nan values
 
-# plot of all AIC trajectories
-df_ews.loc[:,'AIC fold'].unstack(level=0).dropna().plot(legend=False, title='Smax') # drop Nan values
+## plot of all AIC trajectories
+#df_ews.loc[:,'AIC hopf'].unstack(level=0).dropna().plot(legend=False, title='wHopf') # drop Nan values
 
-#---------------------------
-## Compute distribution of kendall tau values and make box-whisker plots
-#----------------------------
 
-# make the time values their own series and use pd.corr to compute kendall tau correlation
-time_series = pd.Series(df_sims_filt.index, index=df_sims_filt.index)
+# Kendall tau box plot
+df_ktau.boxplot()
 
-# Find kendall tau correlation coefficient for each EWS over each realisation.
-# initialise dataframe
-df_ktau = pd.DataFrame(columns=df_ews.columns, index=np.arange(numSims)+1,dtype=float)
-# loop over simulations
-for j in range(numSims):
-    # compute kenall tau for each EWS
-    ktau = pd.Series([df_ews.loc[j+1,x].corr(time_series,method='kendall') for x in df_ews.columns],index=df_ews.columns)
-    # addå to dataframe
-    df_ktau.loc[j+1]= ktau
 
-# kendall tau distribution statistics can be found using
-ktau_stats=df_ktau.describe()
-
-df_ktau[['Variance','Lag-1 AC','Smax']].plot(kind='box',ylim=(-1,1))
+#------------------------
+# Kendall tau values
+#–-------------------
 
 
 # Export kendall tau values for plotting in MMA
-df_ktau[['Variance','Lag-1 AC','Coefficient of variation','Skewness','Kurtosis','Smax']].to_csv('data_export/ktau_multi_k.csv')
-
-
-
-
-#-------------------------------------
-# Display power spectrum and fits at a given instant in time
-#------------------------------------
-
-t_pspec = tmax*(2/10)
-
-# Use function pspec_welch to compute the power spectrum of the residuals at a particular time
-pspec=pspec_welch(df_ews.loc[1][t_pspec-0.25*max(df_sims_filt.index):t_pspec]['Residuals'], 
-                  dt2, 
-                  ham_length=80, 
-                  w_cutoff=1,
-                  scaling='spectrum')
-
-# Execute the function pspec_metrics to compute the AIC weights and fitting parameters
-spec_ews = pspec_metrics(pspec, ews=['smax', 'cf', 'aic', 'aic_params'])
-# Define the power spectrum models
-def fit_fold(w,sigma,lam):
-    return (sigma**2 / (2*np.pi))*(1/(w**2+lam**2))
-        
-def fit_hopf(w,sigma,mu,w0):
-    return (sigma**2/(4*np.pi))*(1/((w+w0)**2+mu**2)+1/((w-w0)**2 +mu**2))
-        
-def fit_null(w,sigma):
-    return sigma**2/(2*np.pi)* w**0
-
-
-# Make plot
-w_vals = np.linspace(-max(pspec.index),max(pspec.index),100)
-
-fig2=plt.figure(6)
-pspec.plot(label='Measured')
-plt.plot(w_vals, fit_fold(w_vals, spec_ews['Params fold']['sigma'], spec_ews['Params fold']['lam']),label='Fold fit')
-plt.plot(w_vals, fit_hopf(w_vals, spec_ews['Params hopf']['sigma'], spec_ews['Params hopf']['mu'], spec_ews['Params hopf']['w0']),label='Hopf fit')
-plt.plot(w_vals, fit_null(w_vals, spec_ews['Params null']['sigma']),label='Null fit')
-plt.ylabel('Power')
-plt.legend()
-plt.title('Power spectrum and fits at time t='+str(t_pspec))
-
-
+df_ktau.to_csv('data_export/ktau_multi.csv')
 
 
 
