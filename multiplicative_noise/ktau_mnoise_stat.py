@@ -44,22 +44,22 @@ def apply_inplace(df, field, fun):
 # Simulation parameters
 dt = 0.1
 t0 = 0
-tmax = 400 # make large (to get idealised statistics from stationary distribution)
-tburn = 100 # burn-in period
+tmax = 1000 # make large (to get idealised statistics from stationary distribution)
+tburn = 200 # burn-in period
 seed = 1 # random number generation seed
 hbif = 0.260437 # Fold bifurcation (computed in XPPAUT)
-hl = 0.1 # low delta value
-hh = 0.2 # high delta value
-hinc = 0.05 # increment in h value
+hl = 0.05 # low delta value
+hh = 0.25 # high delta value
+hinc = 0.005 # increment in h value
 numSims = 1 # One simulation for each h value
 
 
 # noise amplitudes
-r_amp = 0.1
-k_amp = 0.2
-s_amp = 0.1
-state_add_amp = 0.01 # additive noise to state
-state_multi_amp = 0.01 # multiplicative noise proportional to size of state
+r_amp = 0.05
+k_amp = 0.02
+s_amp = 0.05
+state_add_amp = 0.002 # additive noise to state
+state_multi_amp = 0.005 # multiplicative noise proportional to size of state
 
 
 
@@ -108,14 +108,19 @@ hVals = np.arange(hl, hh, hinc)
 list_traj_append = []
 
 
+
+
+#----------------------
+# Run simulation
+#------------------------
+
+# Set seed
+np.random.seed(seed)
+
 # Loop through noise type
 for noisy_params in ['add', 'multi', 'r', 's', 'k']:
 
     ## Implement Euler Maryuyama for stocahstic simulation
-    
-    
-    # Set seed
-    np.random.seed(seed)
     
     
     
@@ -205,110 +210,98 @@ for noisy_params in ['add', 'multi', 'r', 's', 'k']:
         list_traj_append.append(df_traj_temp)
         
         # Print update
-        print('h = %5.2f complete' %h)
+        print('h = %5.4f complete' %h)
  
 
        
 # Concatenate all trajectory DataFrames
-df_traj = pd.concat(list_traj_append).set_index(['h','Noise','Time'])   
+df_traj = pd.concat(list_traj_append).set_index(['Noise','h','Time'])   
     
-# Plot some trajectories at a value of h
-df_traj.loc[0.1].loc['s'].plot()
+## Plot some trajectories at a value of h
+#df_traj.loc[0.1].loc['s'].plot()
+
+
+
+# Coarsen time-series to have spacing dt2 (for EWS computation)
+df_traj_filt = df_traj.loc[::int(dt2/dt)]
+
+     
+#--------------------------------------
+# Compute EWS of each trajectory
+#–------------------------------------
+
+
+# Set up a list to store output dataframes from ews_compute
+# We will concatenate them at the end
+appended_ews = []
+
+# Print update
+print('\nBegin EWS computation\n')
+
+# Loop through noise type
+for noise_type in ['add', 'multi', 'r', 's', 'k']:
     
+    # Loop through h value
+    for h in hVals:
         
+        ews_dic = ews_compute(df_traj_filt.loc[noise_type].loc[h]['State'], 
+                          roll_window = rw, 
+                          band_width = bw,
+                          lag_times = lags, 
+                          ews = ews,
+                          ham_length = ham_length,
+                          ham_offset = ham_offset,
+                          pspec_roll_offset = pspec_roll_offset
+                          )
+        
+        # The DataFrame of EWS
+        df_ews_temp = ews_dic['EWS metrics']
+        
+        # Include a column in the DataFrames for noise type and h value
+        df_ews_temp['h'] = h
+        df_ews_temp['Noise'] = noise_type
+
+                
+        # Add DataFrames to list
+        appended_ews.append(df_ews_temp)
+        
+    # Print status every realisation
+    print('EWS for noise type =  '+str(noise_type)+' complete')
+
+
+# Concatenate EWS DataFrames. Index [Delta, Variable, Time]
+df_ews_full = pd.concat(appended_ews).reset_index().set_index(['Noise','h','Time'])
+
+
+# Refine DataFrame to just have EWS data (no time dependence)
+df_ews = df_ews_full.dropna().reset_index(level=2, drop=True)
 
 
 
-#
-##----------------------
-### Execute ews_compute for each realisation
-##---------------------
-#
-## Sample from time-series at uniform intervals of width dt2
-#dt2 = 1
-#df_sims_filt = df_sims[np.remainder(df_sims.index,dt2) == 0]
-#
-## set up a list to store output dataframes from ews_compute- we will concatenate them at the end
-#appended_ews = []
-#appended_ktau = []
-#
-## Print update
-#print('\n   Begin EWS computation \n')
-#
-## loop through each trajectory as an input to ews_compute
-#for i in range(numSims):
-#    dict_ews = ews_compute(df_sims_filt['Sim '+str(i+1)], 
-#                      roll_window=0.5, 
-#                      band_width=0.05,
-#                      lag_times=[1], 
-#                      ews=['var','ac','sd','cv','skew','kurt','smax'],
-#                      ham_length=40,                     
-#                      upto=tbif*1,
-#                      pspec_roll_offset = 20)
-#    
-#    # EWS dataframe
-#    df_ews_temp = dict_ews['EWS metrics']
-#    # Include a column in the dataframe for realisation number
-#    df_ews_temp['Realisation number'] = i+1
-#    
-##    # Power spectra dataframe
-##    df_pspec_temp = dict_ews['Power spectrum']
-##    df_pspec_temp['Realisation number'] = i+1
-#    
-#    # Kendall tau values
-#    df_ktau_temp = dict_ews['Kendall tau']
-#    df_ktau_temp['Realisation number'] = i+1
-#    
-#    # add DataFrames to list
-#    appended_ews.append(df_ews_temp)
-#    appended_ktau.append(df_ktau_temp)
-#    
-#    
-#    
-#    # print status
-#    if np.remainder(i+1,1)==0:
-#        print('EWS for simulation '+str(i+1)+' complete')
-#
-#
-## concatenate EWS DataFrames - use realisation number and time as indices
-#df_ews = pd.concat(appended_ews).set_index('Realisation number',append=True).reorder_levels([1,0])
-#
-## Concatenate kendall tau dataframes
-#df_ktau = pd.concat(appended_ktau).set_index('Realisation number')
-#
-#
-#
-##------------------------
-## Plots of EWS
-##-----------------------
-#
-## plot of trajectory and smoothing
-#df_ews.loc[1][['State variable','Smoothing']].plot()
-#
-## plot of all variance trajectories
-#df_ews.loc[:,'Variance'].unstack(level=0).plot(legend=False, title='Variance') # unstack puts index back as a column
-#
-## plot of all autocorrelation trajectories
-#df_ews.loc[:,'Lag-1 AC'].unstack(level=0).plot(legend=False, title='Lag-1 AC') 
-#
-## plot of all smax trajectories
-#df_ews.loc[:,'Smax'].unstack(level=0).dropna().plot(legend=False, title='Smax') # drop Nan values
-#
-### plot of all AIC trajectories
-##df_ews.loc[:,'AIC hopf'].unstack(level=0).dropna().plot(legend=False, title='wHopf') # drop Nan values
-#
-#
-## Kendall tau box plot
-#df_ktau.boxplot()
-#
-#
-##------------------------
-## Kendall tau values
-##–-------------------
-#
-#
-## Export kendall tau values for plotting in MMA
-#df_ktau.to_csv('data_export/ktau_multi.csv')
-#
+
+#--------------------------
+# Plots of EWS with different noise
+#–--------------------------
+
+
+df_ews['Smax'].unstack(level=0).plot()
+
+df_ews['Variance'].unstack(level=0).plot()
+
+df_ews['Coefficient of variation'].unstack(level=0).plot()
+
+df_ews['Lag-1 AC'].unstack(level=0).plot()
+
+
+
+
+
+
+
+
+
+
+
+
 
 
