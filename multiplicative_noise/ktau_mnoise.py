@@ -31,14 +31,14 @@ from ews_spec import pspec_welch, pspec_metrics
 # Simulation parameters
 dt = 0.1
 t0 = 0
-tmax = 5000
+tmax = 4000
 burn_time = 200 # burn-in period
 numSims = 100
 seed = 0 # random number generation seed
 
 
 # parameters to add noise to
-noisy_params = ['multi']
+noisy_params = ['k']
 
 # Model: dx/dt = de_fun(x,t) + sigma dW(t)
 def de_fun(x,r,k,h,s):
@@ -49,15 +49,15 @@ def de_fun(x,r,k,h,s):
 r = 1 # growth rate
 k = 1 # carrying capacity
 s = 0.1 # half-saturation constant of harvesting function
-hl = 0.2 # initial harvesting rate
+hl = 0.15 # initial harvesting rate
 hh = 0.28 # final harvesting rate
 hbif = 0.260437 # bifurcation point (computed in Mathematica)
 x0 = 0.8197 # intial condition (equilibrium value computed in Mathematica)
 
 # noise amplitudes
-r_amp = 0.2
-k_amp = 0.1
-s_amp = 0.2
+r_amp = 0.1
+k_amp = 0.05
+s_amp = 0.1
 state_add_amp = 0.01 # additive noise to state
 state_multi_amp = 0.02 # multiplicative noise proportional to size of state
 
@@ -178,12 +178,12 @@ print('\n   Begin EWS computation \n')
 # loop through each trajectory as an input to ews_compute
 for i in range(numSims):
     dict_ews = ews_compute(df_sims_filt['Sim '+str(i+1)], 
-                      roll_window=0.25, 
+                      roll_window=0.5, 
                       band_width=0.05,
                       lag_times=[1], 
                       ews=['var','ac','sd','cv','skew','kurt','smax'],
                       ham_length=40,                     
-                      upto=tbif*0.95,
+                      upto=tbif*0.9,
                       pspec_roll_offset = 20)
     
     # EWS dataframe
@@ -248,7 +248,12 @@ df_ktau[['Variance','Smax', 'Lag-1 AC']].plot(kind='box', ylim=(-1,1))
 
 
 # Export kendall tau values for plotting in MMA
-df_ktau.to_csv('data_export/ktau_multi.csv')
+df_ktau.to_csv('data_export/sim_4000/ktau_k.csv')
+
+
+
+
+
 
 
 
